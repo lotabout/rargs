@@ -93,6 +93,10 @@ impl<'a> Context<'a> {
         context.insert("".to_string(), content);
         context.insert("0".to_string(), content);
 
+        let group_names = pattern.capture_names()
+            .filter_map(|x| x)
+            .collect::<Vec<&str>>();
+
         let mut group_index = 0;
         for caps in pattern.captures_iter(content) {
             // the numbered group
@@ -100,6 +104,13 @@ impl<'a> Context<'a> {
                 if let Some(mat) = mat_wrapper {
                     group_index += 1;
                     context.insert(group_index.to_string(), mat.as_str());
+                }
+            }
+
+            // the named group
+            for name in group_names.iter() {
+                if let Some(mat) = caps.name(name) {
+                    context.insert(name.to_string(), mat.as_str());
                 }
             }
         }
