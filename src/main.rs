@@ -29,7 +29,7 @@ fn real_main() -> i32 {
 }
 
 lazy_static! {
-    static ref CMD_REGEX: Regex = Regex::new(r"\{[[:space]]*[[:alnum:]_]*[[:space]]*\}").unwrap();
+    static ref CMD_REGEX: Regex = Regex::new(r"\{[[:space]]*[[:alnum:]._-]*[[:space]]*\}").unwrap();
 }
 
 #[derive(StructOpt, Debug)]
@@ -91,13 +91,13 @@ fn build_regex_context<'a>(pattern: &'a Regex, content: &'a str) -> Context<'a> 
         .filter_map(|x| x)
         .collect::<Vec<&str>>();
 
-    let mut group_index = 0;
+    let mut groups = vec![];
+
     for caps in pattern.captures_iter(content) {
         // the numbered group
         for mat_wrapper in caps.iter().skip(1) {
             if let Some(mat) = mat_wrapper {
-                group_index += 1;
-                context.insert(group_index.to_string(), mat.as_str());
+                groups.push(mat.as_str());
             }
         }
 
@@ -107,6 +107,12 @@ fn build_regex_context<'a>(pattern: &'a Regex, content: &'a str) -> Context<'a> 
                 context.insert(name.to_string(), mat.as_str());
             }
         }
+    }
+
+    let group_num = groups.len();
+    for (idx, match_string) in groups.into_iter().enumerate() {
+        context.insert((idx+1).to_string(), match_string);
+        context.insert((-((group_num-idx) as i32)).to_string(), match_string);
     }
 
     context

@@ -54,5 +54,15 @@ class TestRargs(unittest.TestCase):
                              '{} -e {{year}} {{2}} {{3}}'.format(echo))
         self.assertEqual(output, '2018 01 20\n')
 
+    def test_negtive_regex_group_should_work(self):
+        # echo '2018-01-20' | rargs '^(?P<year>\d{4})-(\d{2})-(\d{2})$' echo -e {-3} {-2} {-1}
+        # => a\nb\nc\nd\n
+
+        echo = 'gecho' if sys.platform == 'darwin' else 'echo'
+        output = self._rargs(r"echo '2018-01-20'",
+                             '^(?P<year>\d{4})-(\d{2})-(\d{2})$',
+                             '{} -e {{-3}} {{-2}} {{-1}}'.format(echo))
+        self.assertEqual(output, '2018 01 20\n')
+
 if __name__ == '__main__':
     unittest.main()
