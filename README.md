@@ -58,3 +58,4 @@ group. They can later be refered by `{group_name}`.
 
 - [ ] Enhance the capturing syntax. e.g. awk like?
 - [ ] run the commands in parallel.
+- [ ] parallel like placeholders?

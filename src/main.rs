@@ -60,11 +60,7 @@ impl Rargs {
     }
 
     fn execute_for_input(self: &Self, line: &str) {
-        let context = Context::build_from(&self.pattern, line);
-
-        //println!("context {:?}", context);
-        //println!("template {:?}", self.args);
-
+        let context = build_regex_context(&self.pattern, line);
         let args: Vec<String> = self.args.iter().map(|arg| arg.apply_context(&context)).collect();
 
         Command::new(&self.command)
@@ -84,43 +80,36 @@ impl Rargs {
 /// {1}/{year} => "2018"
 /// {2} => "10"
 /// {3} => "21"
-#[derive(Debug)]
-struct Context<'a>(HashMap<String, &'a str>);
+type Context<'a> = HashMap<String, &'a str>;
 
-impl<'a> Context<'a> {
-    fn build_from(pattern: &'a Regex, content: &'a str) -> Self {
-        let mut context = HashMap::new();
-        context.insert("".to_string(), content);
-        context.insert("0".to_string(), content);
+fn build_regex_context<'a>(pattern: &'a Regex, content: &'a str) -> Context<'a> {
+    let mut context = HashMap::new();
+    context.insert("".to_string(), content);
+    context.insert("0".to_string(), content);
 
-        let group_names = pattern.capture_names()
-            .filter_map(|x| x)
-            .collect::<Vec<&str>>();
+    let group_names = pattern.capture_names()
+        .filter_map(|x| x)
+        .collect::<Vec<&str>>();
 
-        let mut group_index = 0;
-        for caps in pattern.captures_iter(content) {
-            // the numbered group
-            for mat_wrapper in caps.iter().skip(1) {
-                if let Some(mat) = mat_wrapper {
-                    group_index += 1;
-                    context.insert(group_index.to_string(), mat.as_str());
-                }
-            }
-
-            // the named group
-            for name in group_names.iter() {
-                if let Some(mat) = caps.name(name) {
-                    context.insert(name.to_string(), mat.as_str());
-                }
+    let mut group_index = 0;
+    for caps in pattern.captures_iter(content) {
+        // the numbered group
+        for mat_wrapper in caps.iter().skip(1) {
+            if let Some(mat) = mat_wrapper {
+                group_index += 1;
+                context.insert(group_index.to_string(), mat.as_str());
             }
         }
 
-        Context(context)
+        // the named group
+        for name in group_names.iter() {
+            if let Some(mat) = caps.name(name) {
+                context.insert(name.to_string(), mat.as_str());
+            }
+        }
     }
 
-    fn look_up(self: &Self, key: &str) -> Option<&str> {
-        self.0.get(key).map(|s| &**s)
-    }
+    context
 }
 
 #[derive(Debug)]
@@ -156,8 +145,8 @@ impl ArgTemplate {
     fn apply_context(self: &Self, context: &Context) -> String {
         self.fragments.iter()
             .map(|fragment| match *fragment {
-                ArgFragment::Literal(ref literal) => literal,
-                ArgFragment::Placeholder(ref placeholder) => context.look_up(placeholder).unwrap(),
+                ArgFragment::Literal(ref literal) => literal.as_str(),
+                ArgFragment::Placeholder(ref placeholder) => context.get(placeholder).unwrap(),
             }).collect::<Vec<&str>>().concat()
 
         // TODO: error handling (lookup fail)

@@ -45,7 +45,7 @@ class TestRargs(unittest.TestCase):
         self.assertEqual(output, '2018 01 20\n')
 
     def test_regex_group_name_should_match(self):
-        # echo '2018-01-20' | rargs '^(?P<year>\d{4})-(\d{2})-(\d{2})$' echo -e {1} {2} {3}
+        # echo '2018-01-20' | rargs '^(?P<year>\d{4})-(\d{2})-(\d{2})$' echo -e {year} {2} {3}
         # => a\nb\nc\nd\n
 
         echo = 'gecho' if sys.platform == 'darwin' else 'echo'
