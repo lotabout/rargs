@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["Jinzhou Zhang <lotabout@gmail.com>"]
 
 [dependencies]
+regex = "0.2.10"
+structopt = { version = "0.2", default-features = false }
