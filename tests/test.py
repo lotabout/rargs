@@ -27,6 +27,9 @@ class TestRargs(unittest.TestCase):
         return self._execute(cmd)
 
     def test_echo(self):
+        # echo -e 'a\\nb\nc\\nd' | rargs pattern echo -e {}
+        # => a\nb\nc\nd\n
+
         echo = 'gecho' if sys.platform == 'darwin' else 'echo'
         output = self._rargs(r"echo -e 'a\\nb\nc\\nd'", 'pattern', '{} -e {{}}'.format(echo))
         self.assertEqual(output, 'a\nb\nc\nd\n')
