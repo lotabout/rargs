@@ -85,15 +85,24 @@ impl Rargs {
 /// {2} => "10"
 /// {3} => "21"
 #[derive(Debug)]
-struct Context<'a>(HashMap<&'a str, &'a str>);
+struct Context<'a>(HashMap<String, &'a str>);
 
 impl<'a> Context<'a> {
     fn build_from(pattern: &'a Regex, content: &'a str) -> Self {
         let mut context = HashMap::new();
-        context.insert("", content);
-        context.insert("0", content);
+        context.insert("".to_string(), content);
+        context.insert("0".to_string(), content);
 
-        // TODO: actually apply regex
+        let mut group_index = 0;
+        for caps in pattern.captures_iter(content) {
+            // the numbered group
+            for mat_wrapper in caps.iter().skip(1) {
+                if let Some(mat) = mat_wrapper {
+                    group_index += 1;
+                    context.insert(group_index.to_string(), mat.as_str());
+                }
+            }
+        }
 
         Context(context)
     }

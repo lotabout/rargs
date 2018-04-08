@@ -49,8 +49,8 @@ group. They can later be refered by `{group_name}`.
 
 ## Roadmap
 
-- [ ] Able to run the commands in batch. (do not support `-n` in `xargs`)
-- [ ] Able to capture groups and use the in commands
+- [X] Able to run the commands in batch. (do not support `-n` in `xargs`)
+- [x] Able to capture groups and use the in commands
 - [ ] Able to capture named groups
 - [ ] Able to specify the delimiter to split the input. (e.g. `-0` in `xargs`)
 

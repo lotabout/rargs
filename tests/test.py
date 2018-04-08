@@ -23,7 +23,7 @@ class TestRargs(unittest.TestCase):
         return output.decode('utf8') if output is not None else None
 
     def _rargs(self, input, pattern, command):
-        cmd = f'{input} | {RARGS} {pattern} {command}'
+        cmd = f"{input} | {RARGS} '{pattern}' {command}"
         return self._execute(cmd)
 
     def test_echo(self):
@@ -33,6 +33,16 @@ class TestRargs(unittest.TestCase):
         echo = 'gecho' if sys.platform == 'darwin' else 'echo'
         output = self._rargs(r"echo -e 'a\\nb\nc\\nd'", 'pattern', '{} -e {{}}'.format(echo))
         self.assertEqual(output, 'a\nb\nc\nd\n')
+
+    def test_regex_should_match(self):
+        # echo '2018-01-20' | rargs '^(?P<year>\d{4})-(\d{2})-(\d{2})$' echo -e {1} {2} {3}
+        # => a\nb\nc\nd\n
+
+        echo = 'gecho' if sys.platform == 'darwin' else 'echo'
+        output = self._rargs(r"echo '2018-01-20'",
+                             '^(?P<year>\d{4})-(\d{2})-(\d{2})$',
+                             '{} -e {{1}} {{2}} {{3}}'.format(echo))
+        self.assertEqual(output, '2018 01 20\n')
 
 if __name__ == '__main__':
     unittest.main()
