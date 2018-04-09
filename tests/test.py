@@ -91,6 +91,80 @@ class TestRargs(unittest.TestCase):
                                 command='{} -e X{{1}},{{2}},{{3}},{{4}}X'.format(self._echo()))
         self.assertEqual(output, "Xa,b,,cX\n")
 
+    def test_range_left_inf(self):
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e X{{..3}}X'.format(self._echo()))
+        self.assertEqual(output, "X1 2 3X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e X{{..-2}}X'.format(self._echo()))
+        self.assertEqual(output, "X1 2 3 4 5X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e X{{..0}}X'.format(self._echo()))
+        self.assertEqual(output, "XX\n")
+
+    def test_range_right_inf(self):
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e X{{3..}}X'.format(self._echo()))
+        self.assertEqual(output, "X3 4 5 6X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e X{{-2..}}X'.format(self._echo()))
+        self.assertEqual(output, "X5 6X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e X{{7..}}X'.format(self._echo()))
+        self.assertEqual(output, "XX\n")
+
+    def test_range_both(self):
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e "X{{3..3}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e "X{{3..4}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3 4X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e "X{{3..7}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3 4 5 6X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e "X{{4..3}}X"'.format(self._echo()))
+        self.assertEqual(output, "XX\n")
+
+    def test_field_separator(self):
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e "X{{3..4:_}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3_4X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d ,',
+                                command='{} -e "X{{3..4:-}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3-4X\n")
+
+    def test_global_field_separator(self):
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d , -s /',
+                                command='{} -e "X{{3..4}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3/4X\n")
+
+        output, _ = self._rargs(input=r"echo -e '1,2,3,4,5,6'",
+                                args='-d , -s /',
+                                command='{} -e "X{{3..4:,}}X"'.format(self._echo()))
+        self.assertEqual(output, "X3,4X\n")
 
 if __name__ == '__main__':
     unittest.main()

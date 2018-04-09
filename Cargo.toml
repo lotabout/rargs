@@ -5,7 +5,7 @@ authors = ["Jinzhou Zhang <lotabout@gmail.com>"]
 
 [dependencies]
 regex = "0.2.10"
-structopt = { version = "0.2", default-features = false }
+structopt = "0.2"
 lazy_static = "1.0.0"
 num_cpus = "1.0"
 threadpool = "1.0"
