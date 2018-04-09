@@ -62,24 +62,27 @@ fn main() {
 }
 
 lazy_static! {
-    static ref CMD_REGEX: Regex = Regex::new(r"\{[[:space]]*[[:alnum:]._-]*[[:space]]*\}").unwrap();
+    static ref CMD_REGEX: Regex = Regex::new(r"\{[[:space:]]*[[:alnum:]._-]*[[:space:]]*\}").unwrap();
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "Rargs", about = "Xargs with pattern matching")]
 #[structopt(raw(setting = "structopt::clap::AppSettings::TrailingVarArg"))]
 struct Options {
-    #[structopt()]
-    pattern: String,
-
-    #[structopt()]
-    command: Vec<String>,
-
     #[structopt(long="read0", short="0")]
     read0: bool,
 
-    #[structopt(short="p", default_value = "1")]
+    #[structopt(long="worker", short="w", default_value = "1")]
     worker: usize,
+
+    #[structopt(long="pattern", short="p")]
+    pattern: Option<String>,
+
+    #[structopt(long="delimiter", short="d", conflicts_with = "pattern")]
+    delimiter: Option<String>,
+
+    #[structopt()]
+    command: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -91,7 +94,17 @@ struct Rargs {
 
 impl Rargs {
     pub fn new(opts: &Options) -> Self {
-        let pattern = Regex::new(&opts.pattern).unwrap();
+        let pattern;
+
+        if let Some(pat_string) = opts.pattern.as_ref() {
+            pattern = Regex::new(pat_string).unwrap();
+        } else if let Some(delimiter) = opts.delimiter.as_ref() {
+            let pat_string = format!(r"(.*?){}|(.*?)$", delimiter);
+            pattern = Regex::new(&pat_string).unwrap();
+        } else {
+            pattern = Regex::new(r"(.*?)[[:space:]]+|(.*?)$").unwrap();
+        }
+
         let command = opts.command[0].to_string();
         let args = opts.command[1..].iter().map(|s| ArgTemplate::from(&**s)).collect();
 
