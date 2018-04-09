@@ -57,5 +57,5 @@ group. They can later be refered by `{group_name}`.
 ### Maybe later
 
 - [ ] Enhance the capturing syntax. e.g. awk like?
-- [ ] run the commands in parallel.
+- [x] run the commands in parallel.
 - [ ] parallel like placeholders?

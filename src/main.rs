@@ -2,6 +2,8 @@
 #[macro_use]extern crate lazy_static;
 
 extern crate regex;
+extern crate num_cpus;
+extern crate threadpool;
 
 use structopt::StructOpt;
 use std::io::{self, BufRead};
@@ -9,22 +11,23 @@ use std::process::Command;
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::From;
+use threadpool::ThreadPool;
+use std::sync::Arc;
 
 fn main() {
-    let exit_code = real_main();
-    std::process::exit(exit_code);
-}
+    let mut exit_code = 0;
 
-fn real_main() -> i32 {
     let options = Options::from_args();
-    let rargs = Rargs::new(&options);
+    let rargs = Arc::new(Rargs::new(&options));
 
     let stdin = io::stdin();
 
+    let num_worker = if options.worker > 0 {options.worker} else {num_cpus::get()};
+    let pool = ThreadPool::new(num_worker);
+
     let line_ending = if options.read0 {b'\0'} else {b'\n'};
-    let mut buffer = Vec::with_capacity(1024);
     loop {
-        buffer.clear();
+        let mut buffer = Vec::with_capacity(1024);
         match stdin.lock().read_until(line_ending, &mut buffer) {
             Ok(n) => {
                 if n == 0 {
@@ -40,17 +43,22 @@ fn real_main() -> i32 {
                 }
 
                 // execute command on line
-                let line = String::from_utf8_lossy(&buffer);
-                rargs.execute_for_input(&line);
+                let rargs = rargs.clone();
+                pool.execute(move || {
+                    let line = String::from_utf8(buffer).expect("Found invalid UTF8");
+                    rargs.execute_for_input(&line);
+                });
             }
             Err(_err) => {
                 // String not UTF8 or other error, skip.
-                return 1;
+                exit_code = 1;
+                break;
             }
         }
     }
 
-    0
+    pool.join();
+    std::process::exit(exit_code);
 }
 
 lazy_static! {
@@ -69,6 +77,9 @@ struct Options {
 
     #[structopt(long="read0", short="0")]
     read0: bool,
+
+    #[structopt(short="p", default_value = "1")]
+    worker: usize,
 }
 
 #[derive(Debug)]
