@@ -21,6 +21,8 @@ before_deploy:
 - bash ci/before_deploy.sh
 deploy:
   provider: releases
+  api_key:
+  - secure: "P/1QqkrrLiVdgL6i5V422FoucPeM+ISQGBq4VRNvQ+YG88XZDkHpUzYqpu/ei8aP3xJ6LtE6oGKl4fjcFGwClSzuG1z4TBNwAXOyAjmaYmniPX1sX9mzyM8JkhSdTQnQGL/L0FmztsCLCb6A5GANX0gQxf0hQw+ET02sBoHBhrBLfIkhHcZcR7ieHHrIUgFty4095cb829oXf11/V8piGxkoOrwtBmj36Q5maAxbSqEkvyfKpiBNX5ZxUb+IEZFLHduglJVY+s30cNw6LY633YWvI7+bl5Og96Hr5ad2c51haKfhQCYg3HKf1NYiCflZnjFM40xaoOcrCUYX0Q96de8xyTlUuBLQPpZPQsasLfFkpgKABboJBaO7+5reEO/bzJG66ItCDodNBqNTDnE7kACCWnc7tzpUKLSL0DB7tY+So91OHR3pUfrJG1SSnoICfl7uiw48YC2w8GIWbVMUW4aDqQ28gTyZ4vYMY7IrLtu5By0D2XwqzXtJxVOSH4HqtnVxVgWGMCCrBhQxZejTjWcTfigevfXiiFUhQJW7SUjZY4XjQN/6joneg01rgOgp8zTLsB/uyzqwAnnw3k7K9uD/HIesLk3EbmkdZDdJ3xUCVjrAu3PH4hjm5saZ8ZvhQBRjjfOmqBl7N0p81LD2gZEENLz/TeaXO5DHJv1Pm+Y="
   file_glob: true
   file: "${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.*"
   skip_cleanup: true
