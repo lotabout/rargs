@@ -2,6 +2,13 @@
 name = "rargs"
 version = "0.2.0"
 authors = ["Jinzhou Zhang <lotabout@gmail.com>"]
+description = "xargs + awk with pattern matching support."
+documentation = "https://github.com/lotabout/rargs"
+homepage = "https://github.com/lotabout/rargs"
+repository = "https://github.com/lotabout/rargs"
+readme  = "README.md"
+keywords = ["xargs", "awk", "regex", "cli"]
+license = "MIT"
 
 [dependencies]
 regex = "0.2.10"
