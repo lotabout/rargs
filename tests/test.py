@@ -9,7 +9,7 @@ import os
 SCRIPT_PATH = os.path.realpath(__file__)
 BASE = os.path.expanduser(os.path.join(os.path.dirname(SCRIPT_PATH), '../'))
 os.chdir(BASE)
-RARGS = f"{BASE}/target/debug/rargs"
+RARGS = f"{BASE}/target/release/rargs"
 
 class TestRargs(unittest.TestCase):
     if sys.platform == 'darwin':

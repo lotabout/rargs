@@ -73,7 +73,7 @@ lazy_static! {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "Rargs", version = "0.1.1", about = "Xargs with pattern matching")]
+#[structopt(name = "Rargs", about = "Xargs with pattern matching")]
 #[structopt(raw(settings = "&[AppSettings::TrailingVarArg]"))]
 struct Options {
     #[structopt(long = "read0", short = "0",

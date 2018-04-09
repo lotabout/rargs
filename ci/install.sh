@@ -2,15 +2,14 @@
 
 case $TRAVIS_OS_NAME in
     linux)
-        sudo add-apt-repository -y ppa:jonathonf/python-3.6
-        sudo apt-get update
-        sudo apt-get -y install python3.6
+        pyenv global 3.6.3
+        python3 -V
         python3.6 -V
-        stty cols 80
         ;;
     osx)
-        brew install python3
+        # install python 3.6
+        brew upgrade python
         python3 -V
-        brew install coreutils
+        python3.6 -V
         ;;
 esac

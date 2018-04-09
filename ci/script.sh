@@ -10,7 +10,7 @@ main() {
 
     cargo test --verbose
 
-    python3.6 test/test.py
+    python3.6 tests/test.py
 }
 
 if [ -z $TRAVIS_TAG ]; then
