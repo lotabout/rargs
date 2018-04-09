@@ -204,7 +204,7 @@ impl ArgTemplate {
         self.fragments.iter()
             .map(|fragment| match *fragment {
                 ArgFragment::Literal(ref literal) => literal.as_str(),
-                ArgFragment::Placeholder(ref placeholder) => context.get(placeholder).unwrap(),
+                ArgFragment::Placeholder(ref placeholder) => context.get(placeholder).unwrap_or(&""),
             }).collect::<Vec<&str>>().concat()
 
         // TODO: error handling (lookup fail)
