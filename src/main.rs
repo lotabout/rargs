@@ -92,7 +92,7 @@ struct Options {
     separator: String,
 
     #[structopt(long = "delimiter", short = "d", conflicts_with = "pattern",
-                help = "regex pattern used as delimiter")]
+                help = "regex pattern used as delimiter (conflict with pattern)")]
     delimiter: Option<String>,
 
     #[structopt(raw(required = "true"), help = "command to execute and its arguments")]
