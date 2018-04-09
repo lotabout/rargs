@@ -20,9 +20,34 @@ fn real_main() -> i32 {
     let rargs = Rargs::new(&options);
 
     let stdin = io::stdin();
-    for wrapped_line in stdin.lock().lines() {
-        let line = wrapped_line.unwrap();
-        rargs.execute_for_input(&line);
+
+    let line_ending = if options.read0 {b'\0'} else {b'\n'};
+    let mut buffer = Vec::with_capacity(1024);
+    loop {
+        buffer.clear();
+        match stdin.lock().read_until(line_ending, &mut buffer) {
+            Ok(n) => {
+                if n == 0 {
+                    break;
+                }
+
+                // remove line-ending
+                if buffer.ends_with(&[b'\r', b'\n']) {
+                    buffer.pop();
+                    buffer.pop();
+                } else if buffer.ends_with(&[b'\n']) || buffer.ends_with(&[b'\0']) {
+                    buffer.pop();
+                }
+
+                // execute command on line
+                let line = String::from_utf8_lossy(&buffer);
+                rargs.execute_for_input(&line);
+            }
+            Err(_err) => {
+                // String not UTF8 or other error, skip.
+                return 1;
+            }
+        }
     }
 
     0
@@ -41,6 +66,9 @@ struct Options {
 
     #[structopt()]
     command: Vec<String>,
+
+    #[structopt(long="read0", short="0")]
+    read0: bool,
 }
 
 #[derive(Debug)]
