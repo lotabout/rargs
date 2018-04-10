@@ -133,7 +133,7 @@ impl Rargs {
 
         Command::new(&self.command)
             .args(args)
-            .spawn()
+            .status()
             .expect("command failed to start");
     }
 }
