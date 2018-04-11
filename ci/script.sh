@@ -11,11 +11,11 @@ main() {
         return
     fi
 
+    mkdir -p target/release/
+    cp target/$TARGET/release/rargs target/release
+
     cross test --target $TARGET
     cross test --target $TARGET --release
-
-    cross run --target $TARGET
-    cross run --target $TARGET --release
 }
 
 # we don't run the "test phase" when doing deploys
