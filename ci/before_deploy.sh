@@ -29,3 +29,5 @@ main() {
 
     rm -rf $stage
 }
+
+main
