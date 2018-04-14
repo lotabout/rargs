@@ -1,4 +1,4 @@
-**Rargs** is kind of `xargs` + `awk` with pattern matching support.
+**Rargs** is kind of `xargs` + `awk` with pattern-matching support.
 
 ![Crates.io](https://img.shields.io/crates/v/rargs.svg) [![Build Status](https://travis-ci.org/lotabout/rargs.svg?branch=master)](https://travis-ci.org/lotabout/rargs)
 
@@ -14,45 +14,36 @@ cargo install --git https://github.com/lotabout/rargs.git
 
 ### Batch rename files
 
-Suppose you had several backup files that named under the pattern
-`scriptname.sh.bak` and you hope to recover them back to `scriptname.sh`.  We
-want to do it in batch, so `xargs` is the first thought, but how do we specify
-the name for the batch? I believe there is no easy way.
+Suppose you have several backup files whose names match the pattern `<scriptname>.sh.bak`, and you want to map each filename back to `<scriptname>.sh`. We want to do it in a batch, so `xargs` is a natural choice, but how do we specify the name for each file? I believe there is no easy way.
 
-With `rargs` however, you are able to do:
+With `rargs`, however, you are able to do:
 
 ```sh
-ls *.bak | rargs '(.*)\.bak' mv {0} {1}
+ls *.bak | rargs -p '(.*)\.bak' mv {0} {1}
 ```
 
-Here `{0}` refers to the whole input string, while `{1}` refers to the first
-group captured in the regular expression.
+Here `{0}` refers to the whole input line, while `{1}` refers to the first group captured in the regular expression.
 
-### Batch Download
+### Batch download
 
-I had a bunch of URLs and their corresponding target filenames stored as csv:
+I had a bunch of URLs and their corresponding target filenames stored in a CSV file:
 
 ```
 URL1,filename1
 URL2,filename2
 ```
 
-I just hope there would be a simple way to download all of them and sotred
-them with the filename(Unfortunatelly the `wget` the URL won't resolve the
-name correctly). With `rargs` there is a simple way:
+I hoped there was a simple way to download and save each URL with its specified filename. With `rargs` there is:
 
 ```sh
-cat download-list | rargs '(?P<url>.*),(?P<filename>.*)' wget {url} -O {filename}
+cat download-list.csv | rargs -p '(?P<url>.*),(?P<filename>.*)' wget {url} -O {filename}
 ```
 
-Here `(?P<group_name>...)` will assign name `group_name` for the captured
-group. They can later be refered by `{group_name}`.
+Here `(?P<group_name>...)` assigns the name `group_name` to the captured group. This can then be referred to as `{group_name}` in the command.
 
-### awk replacement?
+### AWK replacement?
 
-Suppose you have a csv file with lots of columns, and you want only some of
-them. Here is some line that taken from `/etc/passwd`, and you can play around
-with `rargs`.
+Suppose you have an xSV file with lots of columns, and you only want to extract and format some of them, e.g.:
 
 ```
 nobody:*:-2:-2:Unprivileged User:/var/empty:/usr/bin/false
@@ -60,77 +51,58 @@ root:*:0:0:System Administrator:/var/root:/bin/sh
 daemon:*:1:1:System Services:/var/root:/usr/bin/false
 ```
 
-For example:
+Here's an example of how `rargs` can be used to process it:
 
 ```
-$ cat filename | rargs -d : echo -e 'id: "{1}"\t name: "{5}"\t rest: "{6..::}"'
+$ cat /etc/passwd | rargs -d: echo -e 'id: "{1}"\t name: "{5}"\t rest: "{6..::}"'
 id: "nobody"     name: "Unprivileged User"       rest: "/var/empty:/usr/bin/false"
 id: "root"       name: "System Administrator"    rest: "/var/root:/bin/sh"
 id: "daemon"     name: "System Services"         rest: "/var/root:/usr/bin/false"
 ```
 
-`rargs` allow you to specify the delimiter(regex) to split the input and
-allows you to refer to the field or field range. Which could make it an awk
-replacement for simple usage.
+`rargs` allow you to specify the delimiter (regex) to split the input on, and allows you to refer to the corresponding fields or field ranges. This allows it to be used as an AWK replacement for some simple but common cases.
 
 ## How does it work?
 
-1. receive the input from stdin and split them into lines.
-2. match the input with the regex pattern specified by `-p` or `-d` and
-   collect the matched groups(e.g. the ones wrapped with `()`).
-    - If we specify the pattern `(.*).bak`, and for the input
-      `scriptname.sh.bak` then we capture the groups: `{1}`: `scriptname.sh`.
-      And `{0}` will always be the whole input.
-    - If we specify the delimiter `[, ]` and given input `1, 2,3`
-      the captured groups are `{1}: 1`, `{2}: 2`, `{3}: 3`
-3. For each line, expand the command arguments with the captured groups:
-    - if we want to execute `mv {0} {1}` the expanded command would be `mv scriptname.sh.bak scriptname.sh`
+1. receive the input on stdin and split it into lines
+2. split (`-d`) or extract (`-p`) the input into named or numbered groups, with `{0}` matching the whole line
+3. map the named and numbered groups into a command passed as the remaining arguments, and execute the command
 
 ## Features
 
-### Regexp Captures
+### Regexp captures
 
-`rargs` allows you to use any regular expression to match the input and
-captures anything you are interested in. The syntax is the same as normal
-regular expression.
+`rargs` allows you to use any regular expression to match the input, and captures anything you are interested in. The syntax is the standard, mostly Perl-compatible [Rust regex syntax](https://docs.rs/regex/0.2.10/regex/#syntax) used by tools such as [ripgrep](https://github.com/BurntSushi/ripgrep).
+- positional (numbered) groups are captured with parentheses, e.g. `'(\w+):(\d+)'`, and the corresponding groups are referred to by `{1}`, `{2}` etc. in the command
+- named groups are captured with `(?P<name>...)` and referred to by `{name}` in the command
 
-- capture group with `(...)`, later you can refer to it as `{1}` (the number
-    will increase by `1` for any group captured.)
-- named group can be captured by `(?P<name>...)` and later refered by
-    `{name}` in the command's arguments.
+### Delimiter captures
 
-### Delimiter Captures
+For simple usage, you might not want to write the whole regular expression to extract parts of the line. All you want is to split the groups by some delimiter. With `rargs` you can achieve this by using the `-d` (delimiter) option.
 
-For simple usage, you might not want to write the whole regular expression to
-captures, all you want is to split the groups by some delimiter. With `rargs`
-you could easily achieve it by specifying `-d ...`.
+### Field ranges
 
-### Field Ranges
+We already know how to refer to captures by number (`{1}`) or by name (`{name}`). There are also cases where you might want to substitute multiple fields at the same time. `rargs` also supports this with field-range expressions.
 
-We already know we can refer to captures by number(`{1}`) or by
-name(`{name}`). There are also cases that you might want to refer to a bunch
-of fields all at once. `rargs` will help you to do so.
+Suppose we have already captured 5 groups representing the strings `1`, `2`, `3`, `4` and `5`
 
-Suppose we already captured 5 groups: `1, 2, 3, 4, 5`
+- `{..}` gathers them all into `1 2 3 4 5` (note that they are separated by a space; this can be overridden by the `-s` option)
+- `{..3}` results in `1 2 3`
+- `{4..}` results in `4 5`
+- `{2..4}` results in `2 3 4`
+- `{3..3}` results in `3`
 
-- `{..}` will grab them all into `1 2 3 4 5` (note that they are separated by
-    space which could be overwritten by `-s ...`)
-- `{..3}` will result in `1 2 3`
-- `{4..}` will result in `4 5`
-- `{2..4}` will result in `2 3 4` as you would expect.
-- `{3..3}` will result in `3`
+You can also specify a "local" separator (which will not affect the global setting):
 
-you could also speficy the "local" separator(which will not affect the global
-setting):
-- `{..3:-}` will result in `1-2-3`
-- `{..3:/}` will result in `1/2/3`
+- `{..3:-}` results in `1-2-3`
+- `{..3:/}` results in `1/2/3`
 
-### Multiple Threading
+### Multiple threading
 
-You could run the commands in multiple thread to speed up:
+You can run commands in multiple threads to improve performance:
 
-- `-w <num>` to specify the number of workers you want to run simultaneously
-- `-w 0` will default the worke number to the number of your cpu.
+- `-w <num>` specifies the number of workers you want to run simultaneously
+- `-w 0` defaults the number of workers to the number of CPUs on your system
 
 ## Interested?
 
