@@ -97,6 +97,17 @@ You can also specify a "local" separator (which will not affect the global setti
 - `{..3:-}` results in `1-2-3`
 - `{..3:/}` results in `1/2/3`
 
+### Negative field
+
+Sometimes you may want to refer to the last few fields but have no way to predict the total number of fields of the input. `rargs` offer negative fields.
+
+Suppose we have already captured 5 groups representing the strings `1`, `2`, `3`, `4` and `5`:
+
+- `{-1}` results in `5`
+- `{-5}` results in `1`
+- `{-6}` results in nothing
+- `{-3..}` results in `3 4 5`
+
 ### Multiple threading
 
 You can run commands in multiple threads to improve performance:
