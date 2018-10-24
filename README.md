@@ -1,6 +1,6 @@
 **Rargs** is kind of `xargs` + `awk` with pattern-matching support.
 
-![Crates.io](https://img.shields.io/crates/v/rargs.svg) [![Build Status](https://travis-ci.org/lotabout/rargs.svg?branch=master)](https://travis-ci.org/lotabout/rargs)
+[![Crates.io](https://img.shields.io/crates/v/rargs.svg)](https://crates.io/crates/rargs) [![Build Status](https://travis-ci.org/lotabout/rargs.svg?branch=master)](https://travis-ci.org/lotabout/rargs)
 
 ## Installation
 
