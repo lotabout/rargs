@@ -4,6 +4,17 @@
 
 ## Installation
 
+### Mac OS
+
+```
+brew install rargs
+```
+
+### Binary
+
+Download in the [Release Page](https://github.com/lotabout/rargs/releases) and
+put it in your `PATH` after uncompress.
+
 ### Using Cargo
 
 ```
