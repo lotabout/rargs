@@ -1,0 +1,71 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    name: release
+    runs-on: ${{matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - i686-unknown-linux-gnu
+        - i686-unknown-linux-musl
+        - x86_64-unknown-linux-gnu
+        - x86_64-unknown-linux-musl
+        - arm-unknown-linux-gnueabi
+        - armv7-unknown-linux-gnueabihf
+        - x86_64-apple-darwin
+        include:
+          - target: i686-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: i686-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: arm-unknown-linux-gnueabi
+            os: ubuntu-latest
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macOS-latest
+    steps:
+    - name: Set env TAG
+      run: echo ::set-env name=TAG::$(echo ${GITHUB_REF/refs\/tags\//})
+    - name: Checkout repository
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - name: Install correct toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.target }}
+        override: true
+    - name: Run cargo check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+    - name: cross compile
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --release --target ${{ matrix.target }}
+    - name: create artifact
+      run: |
+        cd target/${{matrix.target}}/release
+        tar cvzf rargs-${{env.TAG}}-${{matrix.target}}.tar.gz rargs
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.RARGS_TOKEN }}
+        file: target/${{matrix.target}}/release/rargs-${{env.TAG}}-${{matrix.target}}.tar.gz
+        asset_name: rargs-${{env.TAG}}-${{matrix.target}}.tar.gz
+        tag: ${{ github.ref }}
+        overwrite: true
