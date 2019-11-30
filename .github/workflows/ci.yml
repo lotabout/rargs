@@ -1,0 +1,53 @@
+name: Build & Test
+on:
+  pull_request:
+  push:
+    branches:
+    - master
+
+jobs:
+  test:
+    name: test
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        build:
+          - linux
+          - linux-musl
+          - mac
+        rust: [stable, "1.31.1"]
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - build: linux-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - build: mac
+            os: macOS-latest
+            target: x86_64-apple-darwin
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - name: Install correct toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        target: ${{ matrix.target }}
+        override: true
+    - name: Install musl-gcc if needed
+      if: contains(matrix.target, 'musl')
+      run: |
+        sudo apt-get install musl-tools
+    - name: Run cargo check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+    - name: Build the release target
+      run: cargo build --release --target ${{ matrix.target }}
+    - name: Copy target release to release for test
+      run: mv target/${{matrix.target}}/release/rargs target/release
+    - name: Run tests
+      run: cargo test --verbose
