@@ -8,7 +8,7 @@ extern crate threadpool;
 use structopt::StructOpt;
 use structopt::clap::AppSettings;
 use std::io::{self, BufRead};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::From;
@@ -133,6 +133,7 @@ impl Rargs {
 
         Command::new(&self.command)
             .args(args)
+            .stdin(Stdio::null())
             .status()
             .expect("command failed to start");
     }
