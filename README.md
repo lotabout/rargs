@@ -2,6 +2,13 @@
 
 [![Crates.io](https://img.shields.io/crates/v/rargs.svg)](https://crates.io/crates/rargs) [![Build Status](https://travis-ci.org/lotabout/rargs.svg?branch=master)](https://travis-ci.org/lotabout/rargs)
 
+## How does it work?
+
+Rargs operates in 3 steps:
+1. it receives the input on stdin and splits it into lines;
+2. it either splits (`-d`) or extracts (`-p`) each input line into named or numbered groups, with `{0}` matching the whole line;
+3. finally, it maps the named and numbered groups into a command passed as the remaining arguments, and executes the command.
+
 ## Installation
 
 ### Mac OS
@@ -72,12 +79,6 @@ id: "daemon"     name: "System Services"         rest: "/var/root:/usr/bin/false
 ```
 
 `rargs` allow you to specify the delimiter (regex) to split the input on, and allows you to refer to the corresponding fields or field ranges. This allows it to be used as an AWK replacement for some simple but common cases.
-
-## How does it work?
-
-1. receive the input on stdin and split it into lines
-2. split (`-d`) or extract (`-p`) the input into named or numbered groups, with `{0}` matching the whole line
-3. map the named and numbered groups into a command passed as the remaining arguments, and execute the command
 
 ## Features
 
