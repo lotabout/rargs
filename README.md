@@ -9,25 +9,6 @@ Rargs operates in 3 steps:
 2. it either splits (`-d`) or extracts (`-p`) each input line into named or numbered groups, with `{0}` matching the whole line;
 3. finally, it maps the named and numbered groups into a command passed as the remaining arguments, and executes the command.
 
-## Installation
-
-### Mac OS
-
-```
-brew install rargs
-```
-
-### Binary
-
-Download in the [Release Page](https://github.com/lotabout/rargs/releases) and
-put it in your `PATH` after uncompress.
-
-### Using Cargo
-
-```
-cargo install --git https://github.com/lotabout/rargs.git
-```
-
 ## Example usage
 
 ### Batch rename files
@@ -126,6 +107,25 @@ You can run commands in multiple threads to improve performance:
 
 - `-w <num>` specifies the number of workers you want to run simultaneously
 - `-w 0` defaults the number of workers to the number of CPUs on your system
+
+## Installation
+
+### Mac OS
+
+```
+brew install rargs
+```
+
+### Binary
+
+Download in the [Release Page](https://github.com/lotabout/rargs/releases) and
+put it in your `PATH` after uncompress.
+
+### Using Cargo
+
+```
+cargo install --git https://github.com/lotabout/rargs.git
+```
 
 ## Interested?
 
