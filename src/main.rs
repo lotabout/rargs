@@ -26,7 +26,9 @@ fn main() {
     let stdin = io::stdin();
 
     let num_worker = if options.worker > 0 {options.worker} else {num_cpus::get()};
-    let pool = ThreadPool::new(num_worker);
+    let num_threads = if options.threads > 0 {options.threads} else {num_worker};
+
+    let pool = ThreadPool::new(num_threads);
 
     let line_ending = if options.read0 {b'\0'} else {b'\n'};
     loop {
@@ -81,8 +83,12 @@ struct Options {
     read0: bool,
 
     #[structopt(long = "worker", short = "w", default_value = "1",
-                help = "Number of threads to be used")]
+                help = "Deprecated. Number of threads to be used (same as --threads)")]
     worker: usize,
+
+    #[structopt(long = "threads", short = "j", default_value = "1",
+                help = "Number of threads to be used")]
+    threads: usize,
 
     #[structopt(long = "pattern", short = "p", help = "regex pattern that captures the input")]
     pattern: Option<String>,
