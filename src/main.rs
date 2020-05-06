@@ -56,10 +56,15 @@ fn main() {
                 // execute command on line
                 let rargs = rargs.clone();
                 line_num += 1;
-                pool.execute(move || {
-                    let line = String::from_utf8(buffer).expect("Found invalid UTF8");
-                    rargs.execute_for_input(&line, line_num);
-                });
+                let line = String::from_utf8(buffer).expect("Found invalid UTF8");
+
+                if options.dryrun {
+                    rargs.print_commands_to_be_executed(&line, line_num);
+                } else {
+                    pool.execute(move || {
+                        rargs.execute_for_input(&line, line_num);
+                    });
+                }
             }
             Err(_err) => {
                 // String not UTF8 or other error, skip.
@@ -141,6 +146,13 @@ struct Options {
     )]
     delimiter: Option<String>,
 
+    #[structopt(
+        long = "dry-run",
+        short = "e",
+        help = "Print the commands to be executed without actually execute"
+    )]
+    dryrun: bool,
+
     #[structopt(required = true, help = "command to execute and its arguments")]
     cmd_and_args: Vec<String>,
 }
@@ -181,23 +193,32 @@ impl Rargs {
         }
     }
 
-    fn execute_for_input(&self, line: &str, line_num: i32) {
+    fn get_args(&self, line: &str, line_num: i32) -> Vec<String> {
         let context = RegexContext::builder(&self.pattern, line)
             .default_sep(Cow::Borrowed(&self.default_sep))
             .put(CONTEXT_KEY_LINENUM, Cow::Owned(line_num.to_string()))
             .put(CONTEXT_KEY_LINENUM_SHORT, Cow::Owned(line_num.to_string()))
             .build();
-        let args: Vec<String> = self
-            .args
+
+        self.args
             .iter()
             .map(|arg| arg.apply_context(&context))
-            .collect();
+            .collect()
+    }
+
+    fn execute_for_input(&self, line: &str, line_num: i32) {
+        let args = self.get_args(line, line_num);
 
         Command::new(&self.command)
             .args(args)
             .stdin(Stdio::null())
             .status()
-            .expect("command failed to start");
+            .expect("failed to run command");
+    }
+
+    fn print_commands_to_be_executed(&self, line: &str, line_num: i32) {
+        let args = self.get_args(line, line_num);
+        println!("{} {}", self.command, args.join(" "));
     }
 }
 
