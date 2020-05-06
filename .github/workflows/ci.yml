@@ -15,7 +15,7 @@ jobs:
           - linux
           - linux-musl
           - mac
-        rust: [stable, "1.31.1"]
+        rust: [stable]
         include:
           - build: linux
             os: ubuntu-latest

@@ -126,6 +126,10 @@ You can run commands in multiple threads to improve performance:
 - `-w <num>` specifies the number of workers you want to run simultaneously
 - `-w 0` defaults the number of workers to the number of CPUs on your system
 
+### Special Variables
+
+- `{LINENUM}` or `{LN}` to refer to current line number.
+
 ## Interested?
 
 All feedback and PRs are welcome!
