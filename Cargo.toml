@@ -17,6 +17,7 @@ structopt = "0.3.14"
 lazy_static = "1.4.0"
 num_cpus = "1.13.0"
 threadpool = "1.8.0"
+human-panic = "1.0.3"
 
 [dev-dependencies]
 assert_cli = "0.6.3"

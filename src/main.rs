@@ -10,11 +10,14 @@ use std::sync::Arc;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 use threadpool::ThreadPool;
+use human_panic::setup_panic;
 
 const CONTEXT_KEY_LINENUM: &str = "LINENUM";
 const CONTEXT_KEY_LINENUM_SHORT: &str = "LN";
 
 fn main() {
+    setup_panic!();
+
     let mut exit_code = 0;
 
     let options = Options::from_args();
