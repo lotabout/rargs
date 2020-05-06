@@ -209,11 +209,14 @@ impl Rargs {
     fn execute_for_input(&self, line: &str, line_num: i32) {
         let args = self.get_args(line, line_num);
 
-        Command::new(&self.command)
+        let status = Command::new(&self.command)
             .args(args)
             .stdin(Stdio::null())
-            .status()
-            .expect("failed to run command");
+            .status();
+
+        if let Err(error) = status {
+            eprintln!("rargs: {}: {}", self.command, error);
+        }
     }
 
     fn print_commands_to_be_executed(&self, line: &str, line_num: i32) {
