@@ -123,8 +123,8 @@ Suppose we have already captured 5 groups representing the strings `1`, `2`, `3`
 
 You can run commands in multiple threads to improve performance:
 
-- `-w <num>` specifies the number of workers you want to run simultaneously
-- `-w 0` defaults the number of workers to the number of CPUs on your system
+- `-j <num>` specifies the number of workers you want to run simultaneously
+- `-j 0` defaults the number of workers to the number of CPUs on your system
 
 ### Special Variables
 
