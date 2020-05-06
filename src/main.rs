@@ -1,21 +1,18 @@
-#[macro_use]extern crate structopt;
-#[macro_use]extern crate lazy_static;
-
-extern crate regex;
-extern crate num_cpus;
-extern crate threadpool;
-
-use structopt::StructOpt;
-use structopt::clap::AppSettings;
-use std::io::{self, BufRead};
-use std::process::{Command, Stdio};
+use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::HashMap;
-use std::convert::From;
-use threadpool::ThreadPool;
-use std::sync::Arc;
 use std::borrow::Cow;
 use std::cmp::max;
+use std::collections::HashMap;
+use std::convert::From;
+use std::io::{self, BufRead};
+use std::process::{Command, Stdio};
+use std::sync::Arc;
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
+use threadpool::ThreadPool;
+
+const CONTEXT_KEY_LINENUM: &str = "LINENUM";
+const CONTEXT_KEY_LINENUM_SHORT: &str = "LN";
 
 fn main() {
     let mut exit_code = 0;
@@ -25,12 +22,21 @@ fn main() {
 
     let stdin = io::stdin();
 
-    let num_worker = if options.worker > 0 {options.worker} else {num_cpus::get()};
-    let num_threads = if options.threads > 0 {options.threads} else {num_worker};
+    let num_worker = if options.worker > 0 {
+        options.worker
+    } else {
+        num_cpus::get()
+    };
+    let num_threads = if options.threads > 0 {
+        options.threads
+    } else {
+        num_worker
+    };
 
     let pool = ThreadPool::new(num_threads);
 
-    let line_ending = if options.read0 {b'\0'} else {b'\n'};
+    let line_ending = if options.read0 { b'\0' } else { b'\n' };
+    let mut line_num = options.startnum - 1;
     loop {
         let mut buffer = Vec::with_capacity(1024);
         match stdin.lock().read_until(line_ending, &mut buffer) {
@@ -49,9 +55,10 @@ fn main() {
 
                 // execute command on line
                 let rargs = rargs.clone();
+                line_num += 1;
                 pool.execute(move || {
                     let line = String::from_utf8(buffer).expect("Found invalid UTF8");
-                    rargs.execute_for_input(&line);
+                    rargs.execute_for_input(&line, line_num);
                 });
             }
             Err(_err) => {
@@ -68,40 +75,73 @@ fn main() {
 
 lazy_static! {
     static ref CMD_REGEX: Regex = Regex::new(r"\{[[:space:]]*[^{}]*[[:space:]]*\}").unwrap();
-
-    static ref FIELD_NAMED: Regex = Regex::new(r"^\{[[:space:]]*(?P<name>[[:word:]]*)[[:space:]]*\}$").unwrap();
-    static ref FIELD_SINGLE: Regex = Regex::new(r"^\{[[:space:]]*(?P<num>-?\d+)[[:space:]]*\}$").unwrap();
-    static ref FIELD_RANGE: Regex = Regex::new(r"^\{(?P<left>-?\d*)?\.\.(?P<right>-?\d*)?(?::(?P<sep>.*))?\}$").unwrap();
+    static ref FIELD_NAMED: Regex =
+        Regex::new(r"^\{[[:space:]]*(?P<name>[[:word:]]*)[[:space:]]*\}$").unwrap();
+    static ref FIELD_SINGLE: Regex =
+        Regex::new(r"^\{[[:space:]]*(?P<num>-?\d+)[[:space:]]*\}$").unwrap();
+    static ref FIELD_RANGE: Regex =
+        Regex::new(r"^\{(?P<left>-?\d*)?\.\.(?P<right>-?\d*)?(?::(?P<sep>.*))?\}$").unwrap();
 }
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "Rargs", about = "Xargs with pattern matching")]
-#[structopt(raw(settings = "&[AppSettings::TrailingVarArg]"))]
+#[structopt(settings = &[AppSettings::TrailingVarArg])]
 struct Options {
-    #[structopt(long = "read0", short = "0",
-                help = "Read input delimited by ASCII NUL(\\0) characters")]
+    #[structopt(
+        long = "read0",
+        short = "0",
+        help = "Read input delimited by ASCII NUL(\\0) characters"
+    )]
     read0: bool,
 
-    #[structopt(long = "worker", short = "w", default_value = "1",
-                help = "Deprecated. Number of threads to be used (same as --threads)")]
+    #[structopt(
+        long = "worker",
+        short = "w",
+        default_value = "1",
+        help = "Deprecated. Number of threads to be used (same as --threads)"
+    )]
     worker: usize,
 
-    #[structopt(long = "threads", short = "j", default_value = "1",
-                help = "Number of threads to be used")]
+    #[structopt(
+        long = "threads",
+        short = "j",
+        default_value = "1",
+        help = "Number of threads to be used"
+    )]
     threads: usize,
 
-    #[structopt(long = "pattern", short = "p", help = "regex pattern that captures the input")]
+    #[structopt(
+        long = "pattern",
+        short = "p",
+        help = "regex pattern that captures the input"
+    )]
     pattern: Option<String>,
 
-    #[structopt(long = "separator", short = "s", default_value = " ",
-                help = "separator for ranged fields")]
+    #[structopt(
+        long = "separator",
+        short = "s",
+        default_value = " ",
+        help = "separator for ranged fields"
+    )]
     separator: String,
 
-    #[structopt(long = "delimiter", short = "d", conflicts_with = "pattern",
-                help = "regex pattern used as delimiter (conflict with pattern)")]
+    #[structopt(
+        long = "startnum",
+        short = "n",
+        default_value = "1",
+        help = "start value for line number"
+    )]
+    startnum: i32,
+
+    #[structopt(
+        long = "delimiter",
+        short = "d",
+        conflicts_with = "pattern",
+        help = "regex pattern used as delimiter (conflict with pattern)"
+    )]
     delimiter: Option<String>,
 
-    #[structopt(raw(required = "true"), help = "command to execute and its arguments")]
+    #[structopt(required = true, help = "command to execute and its arguments")]
     cmd_and_args: Vec<String>,
 }
 
@@ -110,7 +150,7 @@ struct Rargs {
     pattern: Regex,
     command: String,
     args: Vec<ArgTemplate>,
-    default_sep: String,  // for output range fields
+    default_sep: String, // for output range fields
 }
 
 impl Rargs {
@@ -127,15 +167,31 @@ impl Rargs {
         }
 
         let command = opts.cmd_and_args[0].to_string();
-        let args = opts.cmd_and_args[1..].iter().map(|s| ArgTemplate::from(&**s)).collect();
+        let args = opts.cmd_and_args[1..]
+            .iter()
+            .map(|s| ArgTemplate::from(&**s))
+            .collect();
         let default_sep = opts.separator.clone();
 
-        Rargs{pattern, command, args, default_sep}
+        Rargs {
+            pattern,
+            command,
+            args,
+            default_sep,
+        }
     }
 
-    fn execute_for_input(&self, line: &str) {
-        let context = RegexContext::build(&self.pattern, line, Cow::Borrowed(&self.default_sep));
-        let args: Vec<String> = self.args.iter().map(|arg| arg.apply_context(&context)).collect();
+    fn execute_for_input(&self, line: &str, line_num: i32) {
+        let context = RegexContext::builder(&self.pattern, line)
+            .default_sep(Cow::Borrowed(&self.default_sep))
+            .put(CONTEXT_KEY_LINENUM, Cow::Owned(line_num.to_string()))
+            .put(CONTEXT_KEY_LINENUM_SHORT, Cow::Owned(line_num.to_string()))
+            .build();
+        let args: Vec<String> = self
+            .args
+            .iter()
+            .map(|arg| arg.apply_context(&context))
+            .collect();
 
         Command::new(&self.command)
             .args(args)
@@ -167,12 +223,13 @@ struct RegexContext<'a> {
 }
 
 impl<'a> RegexContext<'a> {
-    fn build(pattern: &'a Regex, content: &'a str, default_sep: Cow<'a, str>) -> Self {
+    fn builder(pattern: &'a Regex, content: &'a str) -> Self {
         let mut map = HashMap::new();
         map.insert("".to_string(), Cow::Borrowed(content));
         map.insert("0".to_string(), Cow::Borrowed(content));
 
-        let group_names = pattern.capture_names()
+        let group_names = pattern
+            .capture_names()
             .filter_map(|x| x)
             .collect::<Vec<&str>>();
 
@@ -194,12 +251,30 @@ impl<'a> RegexContext<'a> {
             }
         }
 
-        RegexContext{map, groups, default_sep}
+        RegexContext {
+            map,
+            groups,
+            default_sep: Cow::Borrowed(" "),
+        }
+    }
+
+    pub fn default_sep(mut self, default_sep: Cow<'a, str>) -> Self {
+        self.default_sep = default_sep;
+        self
+    }
+
+    pub fn put(mut self, key: &str, value: Cow<'a, str>) -> Self {
+        self.map.insert(key.to_string(), value);
+        self
+    }
+
+    pub fn build(self) -> Self {
+        self
     }
 
     fn translate_neg_index(&self, idx: i32) -> usize {
         let len = self.groups.len() as i32;
-        let idx = if idx < 0 {idx + len + 1} else {idx};
+        let idx = if idx < 0 { idx + len + 1 } else { idx };
         max(0, idx) as usize
     }
 }
@@ -220,7 +295,7 @@ impl<'a> Context<'a> for RegexContext<'a> {
                     return None;
                 }
 
-                let x = Some(self.groups[num -1].clone());
+                let x = Some(self.groups[num - 1].clone());
                 return x;
             }
 
@@ -229,37 +304,43 @@ impl<'a> Context<'a> for RegexContext<'a> {
                 let right = self.translate_neg_index(right);
 
                 if left == 0 {
-                    return self.get_by_range(&LeftInf(right as i32), sep)
+                    return self.get_by_range(&LeftInf(right as i32), sep);
                 } else if right > self.groups.len() {
-                    return self.get_by_range(&RightInf(left as i32), sep)
+                    return self.get_by_range(&RightInf(left as i32), sep);
                 } else if left == right {
-                    return self.get_by_range(&Single(left as i32), sep)
+                    return self.get_by_range(&Single(left as i32), sep);
                 }
 
-                Some(Cow::Owned(self.groups[(left-1)..right].join(sep.unwrap_or(&self.default_sep))))
+                Some(Cow::Owned(
+                    self.groups[(left - 1)..right].join(sep.unwrap_or(&self.default_sep)),
+                ))
             }
 
             LeftInf(right) => {
                 let right = self.translate_neg_index(right);
                 if right > self.groups.len() {
-                    return self.get_by_range(&Inf(), sep)
+                    return self.get_by_range(&Inf(), sep);
                 }
 
-                Some(Cow::Owned(self.groups[..right].join(sep.unwrap_or(&self.default_sep))))
+                Some(Cow::Owned(
+                    self.groups[..right].join(sep.unwrap_or(&self.default_sep)),
+                ))
             }
 
             RightInf(left) => {
                 let left = self.translate_neg_index(left);
                 if left == 0 {
-                    return self.get_by_range(&Inf(), sep)
+                    return self.get_by_range(&Inf(), sep);
                 }
 
-                Some(Cow::Owned(self.groups[(left-1)..].join(sep.unwrap_or(&self.default_sep))))
+                Some(Cow::Owned(
+                    self.groups[(left - 1)..].join(sep.unwrap_or(&self.default_sep)),
+                ))
             }
 
-            Inf() => {
-                Some(Cow::Owned(self.groups.join(sep.unwrap_or(&self.default_sep))))
-            }
+            Inf() => Some(Cow::Owned(
+                self.groups.join(sep.unwrap_or(&self.default_sep)),
+            )),
         }
     }
 }
@@ -276,7 +357,7 @@ enum Range {
 use Range::*;
 
 #[derive(Debug)]
-enum ArgFragment{
+enum ArgFragment {
     Literal(String),
     NamedGroup(String),
     RangeGroup(Range, Option<String>),
@@ -288,22 +369,27 @@ impl ArgFragment {
     fn parse(field_string: &str) -> Self {
         let opt_caps = FIELD_SINGLE.captures(field_string);
         if let Some(caps) = opt_caps {
-            return RangeGroup(Single(caps.name("num")
-                                     .expect("something is wrong in matching FIELD_SINGLE")
-                                     .as_str()
-                                     .parse()
-                                     .expect("field is not a number")),
-                              None);
+            return RangeGroup(
+                Single(
+                    caps.name("num")
+                        .expect("something is wrong in matching FIELD_SINGLE")
+                        .as_str()
+                        .parse()
+                        .expect("field is not a number"),
+                ),
+                None,
+            );
         }
 
         let opt_caps = FIELD_NAMED.captures(field_string);
         if let Some(caps) = opt_caps {
-            return NamedGroup(caps.name("name")
-                              .expect("something is wrong in matching FIELD_NAMED")
-                              .as_str()
-                              .to_string());
+            return NamedGroup(
+                caps.name("name")
+                    .expect("something is wrong in matching FIELD_NAMED")
+                    .as_str()
+                    .to_string(),
+            );
         }
-
 
         let opt_caps = FIELD_RANGE.captures(field_string);
         if let Some(caps) = opt_caps {
@@ -331,7 +417,7 @@ impl ArgFragment {
 /// "x {abc} z" will be compiled so that later `{abc}` could be replaced by actuals content
 #[derive(Debug)]
 struct ArgTemplate {
-    fragments: Vec<ArgFragment>
+    fragments: Vec<ArgFragment>,
 }
 
 impl<'a> From<&'a str> for ArgTemplate {
@@ -345,20 +431,22 @@ impl<'a> From<&'a str> for ArgTemplate {
         }
         fragments.push(ArgFragment::Literal(arg[last..].to_string()));
 
-        ArgTemplate{fragments}
+        ArgTemplate { fragments }
     }
 }
 
 impl<'a> ArgTemplate {
     fn apply_context<T: Context<'a>>(&self, context: &'a T) -> String {
-        self.fragments.iter()
+        self.fragments
+            .iter()
             .map(|fragment| match *fragment {
                 Literal(ref literal) => Cow::Borrowed(literal.as_str()),
                 NamedGroup(ref name) => context.get_by_name(name).unwrap_or(Cow::Borrowed("")),
-                RangeGroup(ref range, ref opt_sep) => {
-                    context.get_by_range(range, opt_sep.as_ref().map(|s| &**s))
-                        .unwrap_or(Cow::Borrowed(""))
-                }
-            }).collect::<Vec<Cow<str>>>().concat()
+                RangeGroup(ref range, ref opt_sep) => context
+                    .get_by_range(range, opt_sep.as_ref().map(|s| &**s))
+                    .unwrap_or(Cow::Borrowed("")),
+            })
+            .collect::<Vec<Cow<str>>>()
+            .concat()
     }
 }

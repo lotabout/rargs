@@ -4,32 +4,47 @@ static RARGS: &'static str = "./target/release/rargs";
 
 #[test]
 fn regex_should_match() {
-    assert_cli::Assert::command(&[RARGS, "-p", r"^(?P<year>\d{4})-(\d{2})-(\d{2})$",
-                                  "echo","{1} {2} {3}"])
-        .stdin("2018-01-20")
-        .stdout()
-        .is("2018 01 20")
-        .unwrap();
+    assert_cli::Assert::command(&[
+        RARGS,
+        "-p",
+        r"^(?P<year>\d{4})-(\d{2})-(\d{2})$",
+        "echo",
+        "{1} {2} {3}",
+    ])
+    .stdin("2018-01-20")
+    .stdout()
+    .is("2018 01 20")
+    .unwrap();
 }
 
 #[test]
 fn test_regex_group_name_should_match() {
-    assert_cli::Assert::command(&[RARGS, "-p", "^(?P<year>\\d{4})-(\\d{2})-(\\d{2})$",
-                                  "echo", "{year} {2} {3}"])
-        .stdin("2018-01-20")
-        .stdout()
-        .is("2018 01 20")
-        .unwrap();
+    assert_cli::Assert::command(&[
+        RARGS,
+        "-p",
+        "^(?P<year>\\d{4})-(\\d{2})-(\\d{2})$",
+        "echo",
+        "{year} {2} {3}",
+    ])
+    .stdin("2018-01-20")
+    .stdout()
+    .is("2018 01 20")
+    .unwrap();
 }
 
 #[test]
 fn test_negtive_regex_group_should_work() {
-    assert_cli::Assert::command(&[RARGS, "-p", "^(?P<year>\\d{4})-(\\d{2})-(\\d{2})$",
-                                  "echo", "{-3} {-2} {-1}"])
-        .stdin("2018-01-20")
-        .stdout()
-        .is("2018 01 20")
-        .unwrap();
+    assert_cli::Assert::command(&[
+        RARGS,
+        "-p",
+        "^(?P<year>\\d{4})-(\\d{2})-(\\d{2})$",
+        "echo",
+        "{-3} {-2} {-1}",
+    ])
+    .stdin("2018-01-20")
+    .stdout()
+    .is("2018 01 20")
+    .unwrap();
 }
 
 #[test]
@@ -52,12 +67,12 @@ fn test_read0_long() {
 
 #[test]
 fn test_no_read0() {
-    assert_cli::Assert::command(&[RARGS, "echo", "{}"])
+    assert!(assert_cli::Assert::command(&[RARGS, "echo", "{}"])
         .stdin("a\0b")
         .stdout()
         .is("a\0b")
         .execute()
-        .is_err();
+        .is_err());
 }
 
 #[test]
@@ -174,5 +189,29 @@ fn test_global_field_separator() {
         .stdin("1,2,3,4,5,6")
         .stdout()
         .is("X3,4X")
+        .unwrap();
+}
+
+#[test]
+fn test_line_num_should_work() {
+    assert_cli::Assert::command(&[RARGS, "echo", "{LN} {}"])
+        .stdin("line 1\nline 2")
+        .stdout()
+        .is("1 line 1\n2 line 2")
+        .unwrap();
+
+    assert_cli::Assert::command(&[RARGS, "echo", "{LINENUM} {}"])
+        .stdin("line 1\nline 2")
+        .stdout()
+        .is("1 line 1\n2 line 2")
+        .unwrap();
+}
+
+#[test]
+fn test_start_num_should_be_working() {
+    assert_cli::Assert::command(&[RARGS, "-n", "10", "echo", "{LN} {}"])
+        .stdin("line 1\nline 2")
+        .stdout()
+        .is("10 line 1\n11 line 2")
         .unwrap();
 }
