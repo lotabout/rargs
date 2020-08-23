@@ -10,6 +10,13 @@
 brew install rargs
 ```
 
+### Nix
+
+```
+nix-env -i rargs
+```
+(Currently available in unstable channel)
+
 ### Binary
 
 Download in the [Release Page](https://github.com/lotabout/rargs/releases) and
