@@ -17,7 +17,7 @@ const CONTEXT_KEY_LINENUM_SHORT: &str = "LN";
 fn main() {
     let mut exit_code = 0;
 
-    let options = Options::from_args();
+    let options = Options::from_args().with_defaults();
     let rargs = Arc::new(Rargs::new(&options));
 
     let stdin = io::stdin();
@@ -155,6 +155,15 @@ struct Options {
 
     #[structopt(required = true, help = "command to execute and its arguments")]
     cmd_and_args: Vec<String>,
+}
+
+impl Options {
+    pub fn with_defaults(mut self) -> Options {
+        if self.cmd_and_args.len() == 1 {
+            self.cmd_and_args.push("{}".to_string());
+        }
+        self
+    }
 }
 
 #[derive(Debug)]
