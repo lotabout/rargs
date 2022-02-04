@@ -128,10 +128,10 @@ Suppose we have already captured 5 groups representing the strings `1`, `2`, `3`
 
 ### Multiple threading
 
-You can run commands in multiple threads to improve performance:
+By default, `rargs` will use one thread per CPU on your system. You can explicitly specify the
+number of threads to use:
 
-- `-w <num>` specifies the number of workers you want to run simultaneously
-- `-w 0` defaults the number of workers to the number of CPUs on your system
+- `-j <num>` specifies the number of threads you want to run simultaneously
 
 ### Special Variables
 

@@ -22,15 +22,11 @@ fn main() {
 
     let stdin = io::stdin();
 
-    let num_worker = if options.worker > 0 {
-        options.worker
-    } else {
-        num_cpus::get()
-    };
-    let num_threads = if options.threads > 0 {
-        options.threads
-    } else {
-        num_worker
+    let num_threads = match (options.threads, options.worker) {
+        (Some(n), _) if n > 0 => n,
+        // Fall back to using deprecated num_worker for backwards compatibility
+        (None, Some(n)) if n > 0 => n,
+        _ => num_cpus::get(),
     };
 
     let pool = ThreadPool::new(num_threads);
@@ -102,18 +98,16 @@ struct Options {
     #[structopt(
         long = "worker",
         short = "w",
-        default_value = "1",
         help = "Deprecated. Number of threads to be used (same as --threads)"
     )]
-    worker: usize,
+    worker: Option<usize>,
 
     #[structopt(
         long = "threads",
         short = "j",
-        default_value = "1",
-        help = "Number of threads to be used"
+        help = "Number of threads to be used. Defaults to # of CPU's"
     )]
-    threads: usize,
+    threads: Option<usize>,
 
     #[structopt(
         long = "pattern",
