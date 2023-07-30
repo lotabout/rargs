@@ -86,6 +86,8 @@ lazy_static! {
         Regex::new(r"^\{[[:space:]]*(?P<num>-?\d+)[[:space:]]*\}$").unwrap();
     static ref FIELD_RANGE: Regex =
         Regex::new(r"^\{(?P<left>-?\d*)?\.\.(?P<right>-?\d*)?(?::(?P<sep>.*))?\}$").unwrap();
+    static ref FIELD_SPLIT_RANGE: Regex =
+        Regex::new(r"^\{(?P<left>-?\d*)?\.\.\.(?P<right>-?\d*)?\}$").unwrap();
 }
 
 #[derive(StructOpt, Debug)]
@@ -227,7 +229,8 @@ impl Rargs {
 
 trait Context<'a> {
     fn get_by_name(&'a self, group_name: &str) -> Option<Cow<'a, str>>;
-    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Vec<Cow<'a, str>>;
+    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Option<Cow<'a, str>>;
+    fn get_by_split_range(&'a self, range: &Range) -> Vec<Cow<'a, str>>;
 }
 
 /// The context parsed from the input line using the pattern given. For Example:
@@ -308,7 +311,67 @@ impl<'a> Context<'a> for RegexContext<'a> {
         self.map.get(group_name).map(|c| c.clone())
     }
 
-    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Vec<Cow<'a, str>> {
+    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Option<Cow<'a, str>> {
+        match *range {
+            Single(num) => {
+                let num = self.translate_neg_index(num);
+
+                if num == 0 {
+                    return self.map.get("").map(|c| c.clone());
+                } else if num > self.groups.len() {
+                    return None;
+                }
+
+                let x = Some(self.groups[num - 1].clone());
+                return x;
+            }
+
+            Both(left, right) => {
+                let left = self.translate_neg_index(left);
+                let right = self.translate_neg_index(right);
+
+                if left == 0 {
+                    return self.get_by_range(&LeftInf(right as i32), sep);
+                } else if right > self.groups.len() {
+                    return self.get_by_range(&RightInf(left as i32), sep);
+                } else if left == right {
+                    return self.get_by_range(&Single(left as i32), sep);
+                }
+
+                Some(Cow::Owned(
+                    self.groups[(left - 1)..right].join(sep.unwrap_or(&self.default_sep)),
+                ))
+            }
+
+            LeftInf(right) => {
+                let right = self.translate_neg_index(right);
+                if right > self.groups.len() {
+                    return self.get_by_range(&Inf(), sep);
+                }
+
+                Some(Cow::Owned(
+                    self.groups[..right].join(sep.unwrap_or(&self.default_sep)),
+                ))
+            }
+
+            RightInf(left) => {
+                let left = self.translate_neg_index(left);
+                if left == 0 {
+                    return self.get_by_range(&Inf(), sep);
+                }
+
+                Some(Cow::Owned(
+                    self.groups[(left - 1)..].join(sep.unwrap_or(&self.default_sep)),
+                ))
+            }
+
+            Inf() => Some(Cow::Owned(
+                self.groups.join(sep.unwrap_or(&self.default_sep)),
+            )),
+        }
+    }
+
+    fn get_by_split_range(&'a self, range: &Range) -> Vec<Cow<'a, str>> {
         match *range {
             Single(num) => {
                 let num = self.translate_neg_index(num);
@@ -327,11 +390,11 @@ impl<'a> Context<'a> for RegexContext<'a> {
                 let right = self.translate_neg_index(right);
 
                 if left == 0 {
-                    return self.get_by_range(&LeftInf(right as i32), sep);
+                    return self.get_by_split_range(&LeftInf(right as i32));
                 } else if right > self.groups.len() {
-                    return self.get_by_range(&RightInf(left as i32), sep);
+                    return self.get_by_split_range(&RightInf(left as i32));
                 } else if left == right {
-                    return self.get_by_range(&Single(left as i32), sep);
+                    return self.get_by_split_range(&Single(left as i32));
                 }
 
                 self.groups[(left - 1)..right].to_vec()
@@ -340,7 +403,7 @@ impl<'a> Context<'a> for RegexContext<'a> {
             LeftInf(right) => {
                 let right = self.translate_neg_index(right);
                 if right > self.groups.len() {
-                    return self.get_by_range(&Inf(), sep);
+                    return self.get_by_split_range(&Inf());
                 }
 
                 self.groups[..right].to_vec()
@@ -349,7 +412,7 @@ impl<'a> Context<'a> for RegexContext<'a> {
             RightInf(left) => {
                 let left = self.translate_neg_index(left);
                 if left == 0 {
-                    return self.get_by_range(&Inf(), sep);
+                    return self.get_by_split_range(&Inf());
                 }
 
                 self.groups[(left - 1)..].to_vec()
@@ -376,6 +439,7 @@ enum ArgFragment {
     Literal(String),
     NamedGroup(String),
     RangeGroup(Range, Option<String>),
+    SplitRangeGroup(Range),
 }
 
 use ArgFragment::*;
@@ -423,6 +487,22 @@ impl ArgFragment {
             }
         }
 
+        let opt_caps = FIELD_SPLIT_RANGE.captures(field_string);
+        if let Some(caps) = opt_caps {
+            let opt_left = caps.name("left").map(|s| s.as_str().parse().unwrap_or(1));
+            let opt_right = caps.name("right").map(|s| s.as_str().parse().unwrap_or(-1));
+
+            if opt_left.is_none() && opt_right.is_none() {
+                return SplitRangeGroup(Inf());
+            } else if opt_left.is_none() {
+                return SplitRangeGroup(LeftInf(opt_right.unwrap()));
+            } else if opt_right.is_none() {
+                return SplitRangeGroup(RightInf(opt_left.unwrap()));
+            } else {
+                return SplitRangeGroup(Both(opt_left.unwrap(), opt_right.unwrap()));
+            }
+        }
+
         return Literal(field_string.to_string());
     }
 }
@@ -459,9 +539,10 @@ impl<'a> ArgTemplate {
                 NamedGroup(ref name) => {
                     context.get_by_name(name).map_or_else(Vec::new, |c| vec![c])
                 }
-                RangeGroup(ref range, ref opt_sep) => {
-                    context.get_by_range(range, opt_sep.as_ref().map(String::as_str))
-                }
+                RangeGroup(ref range, ref opt_sep) => context
+                    .get_by_range(range, opt_sep.as_ref().map(String::as_str))
+                    .map_or_else(Vec::new, |c| vec![c]),
+                SplitRangeGroup(ref range) => context.get_by_split_range(range),
             })
             .filter_map(|c| {
                 let s = c.into_owned();
