@@ -202,7 +202,7 @@ impl Rargs {
 
         self.args
             .iter()
-            .map(|arg| arg.apply_context(&context))
+            .flat_map(|arg| arg.apply_context(&context))
             .collect()
     }
 
@@ -227,7 +227,7 @@ impl Rargs {
 
 trait Context<'a> {
     fn get_by_name(&'a self, group_name: &str) -> Option<Cow<'a, str>>;
-    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Option<Cow<'a, str>>;
+    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Vec<Cow<'a, str>>;
 }
 
 /// The context parsed from the input line using the pattern given. For Example:
@@ -308,19 +308,18 @@ impl<'a> Context<'a> for RegexContext<'a> {
         self.map.get(group_name).map(|c| c.clone())
     }
 
-    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Option<Cow<'a, str>> {
+    fn get_by_range(&'a self, range: &Range, sep: Option<&str>) -> Vec<Cow<'a, str>> {
         match *range {
             Single(num) => {
                 let num = self.translate_neg_index(num);
 
                 if num == 0 {
-                    return self.map.get("").map(|c| c.clone());
+                    return self.map.get("").map_or_else(Vec::new, |c| vec![c.clone()]);
                 } else if num > self.groups.len() {
-                    return None;
+                    return vec![];
                 }
 
-                let x = Some(self.groups[num - 1].clone());
-                return x;
+                vec![self.groups[num - 1].clone()]
             }
 
             Both(left, right) => {
@@ -335,9 +334,7 @@ impl<'a> Context<'a> for RegexContext<'a> {
                     return self.get_by_range(&Single(left as i32), sep);
                 }
 
-                Some(Cow::Owned(
-                    self.groups[(left - 1)..right].join(sep.unwrap_or(&self.default_sep)),
-                ))
+                self.groups[(left - 1)..right].to_vec()
             }
 
             LeftInf(right) => {
@@ -346,9 +343,7 @@ impl<'a> Context<'a> for RegexContext<'a> {
                     return self.get_by_range(&Inf(), sep);
                 }
 
-                Some(Cow::Owned(
-                    self.groups[..right].join(sep.unwrap_or(&self.default_sep)),
-                ))
+                self.groups[..right].to_vec()
             }
 
             RightInf(left) => {
@@ -357,14 +352,10 @@ impl<'a> Context<'a> for RegexContext<'a> {
                     return self.get_by_range(&Inf(), sep);
                 }
 
-                Some(Cow::Owned(
-                    self.groups[(left - 1)..].join(sep.unwrap_or(&self.default_sep)),
-                ))
+                self.groups[(left - 1)..].to_vec()
             }
 
-            Inf() => Some(Cow::Owned(
-                self.groups.join(sep.unwrap_or(&self.default_sep)),
-            )),
+            Inf() => self.groups.to_vec(),
         }
     }
 }
@@ -460,17 +451,26 @@ impl<'a> From<&'a str> for ArgTemplate {
 }
 
 impl<'a> ArgTemplate {
-    fn apply_context<T: Context<'a>>(&self, context: &'a T) -> String {
+    fn apply_context<T: Context<'a>>(&self, context: &'a T) -> Vec<String> {
         self.fragments
             .iter()
-            .map(|fragment| match *fragment {
-                Literal(ref literal) => Cow::Borrowed(literal.as_str()),
-                NamedGroup(ref name) => context.get_by_name(name).unwrap_or(Cow::Borrowed("")),
-                RangeGroup(ref range, ref opt_sep) => context
-                    .get_by_range(range, opt_sep.as_ref().map(|s| &**s))
-                    .unwrap_or(Cow::Borrowed("")),
+            .flat_map(|fragment| match *fragment {
+                Literal(ref literal) => vec![Cow::Borrowed(literal.as_str())],
+                NamedGroup(ref name) => {
+                    context.get_by_name(name).map_or_else(Vec::new, |c| vec![c])
+                }
+                RangeGroup(ref range, ref opt_sep) => {
+                    context.get_by_range(range, opt_sep.as_ref().map(|s| &**s))
+                }
             })
-            .collect::<Vec<Cow<str>>>()
-            .concat()
+            .filter_map(|c| {
+                let s = c.into_owned();
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s)
+                }
+            })
+            .collect()
     }
 }
