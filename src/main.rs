@@ -460,7 +460,7 @@ impl<'a> ArgTemplate {
                     context.get_by_name(name).map_or_else(Vec::new, |c| vec![c])
                 }
                 RangeGroup(ref range, ref opt_sep) => {
-                    context.get_by_range(range, opt_sep.as_ref().map(|s| &**s))
+                    context.get_by_range(range, opt_sep.as_ref().map(String::as_str))
                 }
             })
             .filter_map(|c| {
