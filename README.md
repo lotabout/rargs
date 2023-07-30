@@ -126,6 +126,10 @@ Suppose we have already captured 5 groups representing the strings `1`, `2`, `3`
 - `{-6}` results in nothing
 - `{-3..}` results in `3 4 5`
 
+## Split ranges
+
+Field ranges will still pass in one argument to the command. You can split these with the syntax `{...}`. Specifying endpoints to the range works the same as the non-split ranges.
+
 ### Multiple threading
 
 You can run commands in multiple threads to improve performance:
